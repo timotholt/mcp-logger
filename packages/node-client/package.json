@@ -1,0 +1,21 @@
+{
+  "name": "@mcp-logger/node-client",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rimraf dist && babel src --out-dir dist --extensions .js",
+    "lint": "eslint src",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@mcp-logger/shared": "workspace:^",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.10"
+  }
+}

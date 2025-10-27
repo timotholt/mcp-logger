@@ -1,0 +1,24 @@
+{
+  "name": "@mcp-logger/server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rimraf dist && babel src --out-dir dist --extensions .js",
+    "dev": "node src/index.js",
+    "lint": "eslint src",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@mcp-logger/shared": "workspace:^",
+    "@modelcontextprotocol/sdk": "^0.1.11",
+    "dotenv": "^16.4.5",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.10"
+  }
+}
