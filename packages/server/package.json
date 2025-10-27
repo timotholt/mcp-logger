@@ -14,11 +14,12 @@
   },
   "dependencies": {
     "@mcp-logger/shared": "file:../shared",
-    "@modelcontextprotocol/sdk": "^0.1.11",
+    "@modelcontextprotocol/sdk": "^1.20.2",
     "dotenv": "^16.4.5",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.25.7",
     "rimraf": "^5.0.10"
   }
 }
