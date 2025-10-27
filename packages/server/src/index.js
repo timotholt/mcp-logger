@@ -1,3 +1,5 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { loadConfig } from './config.js'
 import { LogStore } from './store.js'
 import { Broadcaster } from './broadcaster.js'
@@ -8,6 +10,16 @@ export async function startServer() {
   const config = loadConfig()
   const store = new LogStore({ size: config.bufferSize })
   const broadcaster = new Broadcaster()
+
+  console.log('[mcp-logger] Starting server')
+  console.log(`  buffer size: ${config.bufferSize}`)
+  if (config.httpPort) {
+    console.log(
+      `  http transport: enabled (host=${config.httpHost || '0.0.0.0'} port=${config.httpPort})`
+    )
+  } else {
+    console.log('  http transport: disabled (set LOG_HTTP_PORT to enable dashboard/http APIs)')
+  }
 
   const stdio = createStdioTransport({ store, broadcaster })
   const http = createHttpTransport({ config, store, broadcaster })
@@ -26,7 +38,8 @@ export async function startServer() {
   return { store, broadcaster, config }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const modulePath = fileURLToPath(import.meta.url)
+if (process.argv[1] && path.resolve(process.argv[1]) === modulePath) {
   startServer().catch((err) => {
     console.error('[mcp-logger] Failed to start server', err)
     process.exit(1)

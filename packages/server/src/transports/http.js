@@ -33,6 +33,9 @@ function serveStatic(req, res, dir) {
 
 export function createHttpTransport({ config, store, broadcaster }) {
   if (!config.httpPort) {
+    console.warn(
+      '[mcp-logger] HTTP transport disabled: LOG_HTTP_PORT is not set or invalid. The dashboard and HTTP endpoints will be unavailable.'
+    )
     return { start: async () => {}, stop: async () => {} }
   }
 
@@ -110,8 +113,18 @@ export function createHttpTransport({ config, store, broadcaster }) {
     })
 
     await new Promise((resolve) => {
-      server.listen(config.httpPort, resolve)
+      server.listen(config.httpPort, config.httpHost || '0.0.0.0', resolve)
     })
+
+    const address = server.address()
+    if (address && typeof address === 'object') {
+      const host = address.address === '::' ? 'localhost' : address.address
+      console.log(
+        `[mcp-logger] HTTP server listening at http://${host}:${address.port}`
+      )
+    } else {
+      console.log('[mcp-logger] HTTP server listening (port %s)', config.httpPort)
+    }
 
     wss = new WebSocketServer({ server, path: '/ws' })
     wss.on('connection', (socket, req) => {
