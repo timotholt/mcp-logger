@@ -12,7 +12,10 @@ export function patchConsole(send) {
     console[method] = function patchedConsole() {
       const args = Array.prototype.slice.call(arguments)
       try {
-        send({ level: method === 'debug' ? 'debug' : method, message: args })
+        var level = method
+        if (method === 'log') level = 'info'
+        if (method === 'debug') level = 'debug'
+        send({ level: level, message: args, data: { args: args } })
       } catch (err) {
         // ignore
       }

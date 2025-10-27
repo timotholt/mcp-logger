@@ -1,4 +1,6 @@
 import http from 'http'
+import fs from 'fs'
+import path from 'path'
 import { WebSocketServer } from 'ws'
 
 function authorize(req, token) {
@@ -6,6 +8,27 @@ function authorize(req, token) {
   const header = req.headers['authorization'] || ''
   const value = Array.isArray(header) ? header[0] : header
   return value === `Bearer ${token}`
+}
+
+function serveStatic(req, res, dir) {
+  if (!dir) return false
+  const safeRoot = path.resolve(dir)
+  const urlPath = req.url === '/' ? '/index.html' : req.url
+  const targetPath = path.join(safeRoot, urlPath)
+  if (!targetPath.startsWith(safeRoot)) {
+    return false
+  }
+  try {
+    const stat = fs.statSync(targetPath)
+    if (stat.isFile()) {
+      const stream = fs.createReadStream(targetPath)
+      stream.pipe(res)
+      return true
+    }
+  } catch (err) {
+    return false
+  }
+  return false
 }
 
 export function createHttpTransport({ config, store, broadcaster }) {
@@ -75,6 +98,10 @@ export function createHttpTransport({ config, store, broadcaster }) {
           res.write(`data: ${JSON.stringify(entry)}\n\n`)
         })
         req.on('close', unsubscribe)
+        return
+      }
+
+      if (serveStatic(req, res, config.dashboardDir)) {
         return
       }
 

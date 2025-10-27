@@ -1,4 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import { registerPushLogTool } from '../tools/pushLog.js'
+import { registerFetchLogsTool } from '../tools/fetchLogs.js'
+import { registerClearLogsTool } from '../tools/clearLogs.js'
+import { registerSetSessionTool } from '../tools/setSession.js'
 
 export function createStdioTransport({ store, broadcaster }) {
   const server = new Server({ name: 'mcp-logger' })
@@ -9,34 +13,10 @@ export function createStdioTransport({ store, broadcaster }) {
     if (started) return
     started = true
 
-    server.tool('logging/push', async ({ params }) => {
-      const stored = store.append(params || {})
-      return { success: true, entry: stored }
-    })
-
-    server.tool('logging/fetch', async ({ params }) => {
-      const { entries, nextCursor } = store.read({
-        cursor: params?.cursor,
-        limit: params?.limit || 100,
-        filterOptions: {
-          levels: params?.levels,
-          clientId: params?.clientId,
-          sessionId: params?.sessionId,
-          since: params?.since
-        }
-      })
-      return { entries, nextCursor }
-    })
-
-    server.tool('logging/clear', async () => {
-      const session = store.clear()
-      return { success: true, session }
-    })
-
-    server.tool('logging/set-session', async ({ params }) => {
-      const session = store.startSession(params?.label || 'session')
-      return { session }
-    })
+    registerPushLogTool(server, store)
+    registerFetchLogsTool(server, store)
+    registerClearLogsTool(server, store)
+    registerSetSessionTool(server, store)
 
     broadcaster.on('append', (entry) => {
       server.logging({ level: entry.level, data: entry })
