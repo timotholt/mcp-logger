@@ -3,22 +3,17 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
-  "workspaces": [
-    "packages/shared",
-    "packages/server",
-    "packages/browser-client",
-    "packages/node-client",
-    "packages/dashboard"
-  ],
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "vitest",
-    "build": "npm run build --workspaces",
-    "build:browser": "npm run build -w packages/browser-client",
-    "build:server": "npm run build -w packages/server",
-    "build:dashboard": "npm run build -w packages/dashboard"
+    "build": "npm run build:shared && npm run build:server && npm run build:browser && npm run build:node && npm run build:dashboard",
+    "build:shared": "npm run build --prefix packages/shared",
+    "build:server": "npm run build --prefix packages/server",
+    "build:browser": "npm run build --prefix packages/browser-client",
+    "build:node": "npm run build --prefix packages/node-client",
+    "build:dashboard": "npm run build --prefix packages/dashboard"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

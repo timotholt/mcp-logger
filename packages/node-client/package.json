@@ -12,7 +12,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@mcp-logger/shared": "workspace:^",
+    "@mcp-logger/shared": "file:../shared",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {

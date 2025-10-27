@@ -10,6 +10,6 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@mcp-logger/shared": "workspace:^"
+    "@mcp-logger/shared": "file:../shared"
   }
 }

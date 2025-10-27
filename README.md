@@ -149,6 +149,24 @@ local debugging.
   - `LOG_BROWSER_TARGET=es5` (build flag controlling Babel preset for legacy
     bundle).
 
+## Local Development Without Workspaces
+
+The repo now relies on plain npm with direct `file:` links instead of
+workspaces. Use the project root scripts to keep package builds in sync:
+
+```bash
+npm install
+npm run build:shared
+npm run build:server
+npm run build:browser
+npm run build:node
+npm run build:dashboard
+```
+
+The `npm run build` shortcut chains those commands in order. Each package can
+also be built or tested in isolation via `npm run <script> --prefix
+packages/<name>`.
+
 ## Roadmap
 
 1. Scaffold repo (workspaces, linting, testing, GitHub workflows).

@@ -13,7 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@mcp-logger/shared": "workspace:^",
+    "@mcp-logger/shared": "file:../shared",
     "@modelcontextprotocol/sdk": "^0.1.11",
     "dotenv": "^16.4.5",
     "ws": "^8.18.0"
