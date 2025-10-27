@@ -91,9 +91,13 @@ export function attachLogger(options = {}) {
 }
 
 export function detachLogger() {
-  state?.detach?.()
+  if (state && typeof state.detach === 'function') {
+    state.detach()
+  }
 }
 
 export function setSession(id) {
-  state?.setSession?.(id)
+  if (state && typeof state.setSession === 'function') {
+    state.setSession(id)
+  }
 }
