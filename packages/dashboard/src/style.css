@@ -10,6 +10,35 @@ body {
   color: #f5f5f5;
 }
 
+
+.logger-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 16px 0;
+}
+
+.logger-header {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.logger-links {
+  display: flex;
+  gap: 12px;
+}
+
+.logger-links a {
+  color: #8ab4ff;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.logger-links a:hover {
+  text-decoration: underline;
+}
+
 .logger {
   padding: 16px;
 }

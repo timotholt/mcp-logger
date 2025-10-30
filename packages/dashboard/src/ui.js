@@ -33,18 +33,36 @@ export function createApp(root) {
   }
 
   const container = createElement('div', 'logger')
+  const headerRow = createElement('div', 'logger-header-row')
   const header = createElement('div', 'logger-header')
   header.textContent = 'Loading MCP Logger metadata...'
-  container.appendChild(header)
+  headerRow.appendChild(header)
+  const links = createElement('div', 'logger-links')
+  ;[
+    { label: 'Health', href: '/health' },
+    { label: 'Metadata', href: '/meta' },
+    { label: 'Events (SSE)', href: '/events' }
+  ].forEach(({ label, href }) => {
+    const anchor = document.createElement('a')
+    anchor.href = href
+    anchor.textContent = label
+    anchor.target = '_blank'
+    anchor.rel = 'noopener noreferrer'
+    links.appendChild(anchor)
+  })
+  if (links.childElementCount > 0) {
+    headerRow.appendChild(links)
+  }
+  container.appendChild(headerRow)
   const table = createElement('table', 'log-table')
   const thead = createElement('thead')
-  const headerRow = createElement('tr')
+  const tableHeaderRow = createElement('tr')
   ;['Time', 'Level', 'Client', 'Session', 'Message'].forEach((label) => {
     const th = createElement('th')
     th.textContent = label
-    headerRow.appendChild(th)
+    tableHeaderRow.appendChild(th)
   })
-  thead.appendChild(headerRow)
+  thead.appendChild(tableHeaderRow)
   table.appendChild(thead)
 
   const tbody = createElement('tbody')
