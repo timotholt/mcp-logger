@@ -1,6 +1,11 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { createRequire } from 'module'
 import dotenv from 'dotenv'
+
+const require = createRequire(import.meta.url)
+const packageJson = require('../package.json')
+const PACKAGE_VERSION = packageJson?.version || '0.0.0'
 
 const DEFAULTS = {
   LOG_BUFFER_SIZE: 5000,
@@ -8,7 +13,8 @@ const DEFAULTS = {
   LOG_HTTP_HOST: '0.0.0.0',
   LOG_AUTH_TOKEN: '',
   LOG_BROWSER_TARGET: 'es5',
-  LOG_DASHBOARD_DIR: ''
+  LOG_DASHBOARD_DIR: '',
+  LOG_BUILD_NUMBER: 0
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -20,25 +26,32 @@ export const configMetadata = {
   envFileLoaded: !envResult.error
 }
 
-function parseIntEnv(value, fallback) {
+function parsePositiveIntEnv(value, fallback) {
   const numeric = typeof value === 'string' ? parseInt(value, 10) : value
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback
 }
 
+function parseNonNegativeIntEnv(value, fallback) {
+  const numeric = typeof value === 'string' ? parseInt(value, 10) : value
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : fallback
+}
+
 export function loadConfig() {
-  const httpPort = parseIntEnv(process.env.LOG_HTTP_PORT, DEFAULTS.LOG_HTTP_PORT)
+  const httpPort = parsePositiveIntEnv(process.env.LOG_HTTP_PORT, DEFAULTS.LOG_HTTP_PORT)
   const dashboardDirRaw = process.env.LOG_DASHBOARD_DIR || DEFAULTS.LOG_DASHBOARD_DIR
   const dashboardDir = dashboardDirRaw
     ? path.resolve(path.dirname(ENV_PATH), dashboardDirRaw)
     : ''
 
   return {
-    bufferSize: parseIntEnv(process.env.LOG_BUFFER_SIZE, DEFAULTS.LOG_BUFFER_SIZE),
+    bufferSize: parsePositiveIntEnv(process.env.LOG_BUFFER_SIZE, DEFAULTS.LOG_BUFFER_SIZE),
     httpPort,
     httpHost: process.env.LOG_HTTP_HOST || DEFAULTS.LOG_HTTP_HOST,
     authToken: process.env.LOG_AUTH_TOKEN || DEFAULTS.LOG_AUTH_TOKEN,
     browserTarget: process.env.LOG_BROWSER_TARGET || DEFAULTS.LOG_BROWSER_TARGET,
     dashboardDir,
+    version: PACKAGE_VERSION,
+    buildNumber: parseNonNegativeIntEnv(process.env.LOG_BUILD_NUMBER, DEFAULTS.LOG_BUILD_NUMBER),
     raw: {
       dashboardDir: dashboardDirRaw
     }

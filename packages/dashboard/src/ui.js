@@ -1,5 +1,15 @@
 import { startLogStream } from './ws.js'
 
+async function fetchMetadata() {
+  try {
+    const res = await fetch('/meta')
+    if (!res.ok) return null
+    return await res.json()
+  } catch (err) {
+    return null
+  }
+}
+
 const MAX_ENTRIES = 1000
 
 function createElement(tag, className) {
@@ -18,10 +28,14 @@ function formatTimestamp(ts) {
 
 export function createApp(root) {
   const state = {
-    entries: []
+    entries: [],
+    meta: null
   }
 
   const container = createElement('div', 'logger')
+  const header = createElement('div', 'logger-header')
+  header.textContent = 'Loading MCP Logger metadata...'
+  container.appendChild(header)
   const table = createElement('table', 'log-table')
   const thead = createElement('thead')
   const headerRow = createElement('tr')
@@ -37,6 +51,19 @@ export function createApp(root) {
   table.appendChild(tbody)
   container.appendChild(table)
   root.appendChild(container)
+
+  function renderHeader() {
+    if (!state.meta) {
+      header.textContent = 'MCP Logger'
+      return
+    }
+    const version = state.meta.version ? `v${state.meta.version}` : 'v?.?'
+    const build = state.meta.buildNumber != null ? `build #${state.meta.buildNumber}` : ''
+    const started = state.meta.startedAt
+      ? new Date(state.meta.startedAt).toLocaleString()
+      : 'unknown'
+    header.textContent = `MCP Logger ${version} ${build} — Started ${started}`
+  }
 
   function render() {
     tbody.innerHTML = ''
@@ -78,4 +105,13 @@ export function createApp(root) {
   }
 
   startLogStream(handleEvent)
+
+  fetchMetadata().then((meta) => {
+    if (meta) {
+      state.meta = meta
+      renderHeader()
+    } else {
+      header.textContent = 'MCP Logger'
+    }
+  })
 }

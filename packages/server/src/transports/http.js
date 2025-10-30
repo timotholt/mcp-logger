@@ -47,7 +47,7 @@ function serveStatic(req, res, dir) {
   return false
 }
 
-export function createHttpTransport({ config, store, broadcaster }) {
+export function createHttpTransport({ config, store, broadcaster, meta = {} }) {
   if (!config.httpPort) {
     console.warn(
       '[mcp-logger] HTTP transport disabled: LOG_HTTP_PORT is not set or invalid. The dashboard and HTTP endpoints will be unavailable.'
@@ -83,12 +83,31 @@ export function createHttpTransport({ config, store, broadcaster }) {
       }
 
       if (req.method === 'GET' && req.url === '/health') {
+        const stats = typeof store.stats === 'function' ? store.stats() : null
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(
           JSON.stringify({
             ok: true,
             uptime: process.uptime(),
-            entries: store.size ? store.size() : undefined
+            entries: stats?.count,
+            dropped: stats?.dropped,
+            bufferSize: stats?.size
+          })
+        )
+        return
+      }
+
+      if (req.method === 'GET' && req.url === '/meta') {
+        const stats = typeof store.stats === 'function' ? store.stats() : null
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(
+          JSON.stringify({
+            version: meta.version,
+            buildNumber: meta.buildNumber,
+            startedAt: meta.startedAt,
+            dashboardDir: config.dashboardDir,
+            bufferSize: config.bufferSize,
+            stats
           })
         )
         return
@@ -137,6 +156,8 @@ export function createHttpTransport({ config, store, broadcaster }) {
       }
 
       if (req.method === 'GET' && req.url === '/') {
+        const stats = typeof store.stats === 'function' ? store.stats() : null
+        const startedText = meta.startedAt ? new Date(meta.startedAt).toLocaleString() : 'unknown'
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
         res.end(`<!doctype html>
 <html lang="en">
@@ -147,11 +168,17 @@ export function createHttpTransport({ config, store, broadcaster }) {
       body { font-family: sans-serif; margin: 2rem; line-height: 1.5; color: #111; }
       code { background: #f5f5f5; padding: 0.1rem 0.4rem; border-radius: 4px; }
       .hint { margin-top: 1rem; }
+      .meta { margin-top: 1rem; font-size: 0.9rem; color: #444; }
     </style>
   </head>
   <body>
     <h1>MCP Logger</h1>
     <p>Server is running.</p>
+    <p class="meta">
+      Version v${meta.version ?? 'unknown'} build #${meta.buildNumber ?? 'n/a'} &bull;
+      Started ${startedText} &bull; Buffer size ${config.bufferSize}
+      ${stats?.count != null ? `&bull; Entries ${stats.count}` : ''}
+    </p>
     <ul>
       <li><strong>Health:</strong> <code>/health</code></li>
       <li><strong>Push logs (POST JSON):</strong> <code>/push</code></li>

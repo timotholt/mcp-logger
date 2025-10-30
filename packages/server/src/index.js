@@ -10,25 +10,27 @@ export async function startServer() {
   const config = loadConfig()
   const store = new LogStore({ size: config.bufferSize })
   const broadcaster = new Broadcaster()
+  const startedAt = new Date().toISOString()
 
   console.log('[mcp-logger] Starting server')
   console.log(
     `  env file (${configMetadata.envFileLoaded ? 'loaded' : 'missing'}): ${configMetadata.envFilePath}`
   )
   console.log(`  buffer size: ${config.bufferSize}`)
+  console.log(`  version: v${config.version} build #${config.buildNumber}`)
+  console.log(`  started at: ${new Date(startedAt).toLocaleString()}`)
   if (config.httpPort) {
     console.log(
       `  http transport: enabled (host=${config.httpHost || '0.0.0.0'} port=${config.httpPort})`
     )
     const host = config.httpHost === '0.0.0.0' ? 'localhost' : config.httpHost
     if (config.dashboardDir) {
+      const configuredAs =
+        config.raw?.dashboardDir && config.raw.dashboardDir !== config.dashboardDir
+          ? ` (configured as ${config.raw.dashboardDir})`
+          : ''
       console.log(
-        `  dashboard: http://${host}:${config.httpPort}/ (serve dir: ${config.dashboardDir}$${
-          config.raw?.dashboardDir &&
-          config.raw.dashboardDir !== config.dashboardDir
-            ? `, configured as ${config.raw.dashboardDir}`
-            : ''
-        })`
+        `  dashboard: http://${host}:${config.httpPort}/ (serve dir: ${config.dashboardDir}${configuredAs})`
       )
     } else {
       console.log('  dashboard: disabled (set LOG_DASHBOARD_DIR to serve UI assets)')
@@ -38,7 +40,16 @@ export async function startServer() {
   }
 
   const stdio = createStdioTransport({ store, broadcaster })
-  const http = createHttpTransport({ config, store, broadcaster })
+  const http = createHttpTransport({
+    config,
+    store,
+    broadcaster,
+    meta: {
+      version: config.version,
+      buildNumber: config.buildNumber,
+      startedAt
+    }
+  })
 
   await Promise.all([stdio.start(), http.start()])
 
