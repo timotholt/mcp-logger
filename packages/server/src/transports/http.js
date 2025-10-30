@@ -14,13 +14,29 @@ function serveStatic(req, res, dir) {
   if (!dir) return false
   const safeRoot = path.resolve(dir)
   const urlPath = req.url === '/' ? '/index.html' : req.url
-  const targetPath = path.join(safeRoot, urlPath)
+  const normalizedPath = urlPath.startsWith('/') ? urlPath.slice(1) : urlPath
+  const targetPath = path.resolve(safeRoot, normalizedPath)
   if (!targetPath.startsWith(safeRoot)) {
     return false
   }
   try {
     const stat = fs.statSync(targetPath)
     if (stat.isFile()) {
+      const ext = path.extname(targetPath).toLowerCase()
+      const contentType =
+        {
+          '.html': 'text/html; charset=utf-8',
+          '.js': 'application/javascript; charset=utf-8',
+          '.css': 'text/css; charset=utf-8',
+          '.json': 'application/json; charset=utf-8',
+          '.svg': 'image/svg+xml',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.gif': 'image/gif',
+          '.ico': 'image/x-icon'
+        }[ext] || 'application/octet-stream'
+      res.setHeader('Content-Type', contentType)
       const stream = fs.createReadStream(targetPath)
       stream.pipe(res)
       return true
@@ -66,6 +82,18 @@ export function createHttpTransport({ config, store, broadcaster }) {
         return
       }
 
+      if (req.method === 'GET' && req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(
+          JSON.stringify({
+            ok: true,
+            uptime: process.uptime(),
+            entries: store.size ? store.size() : undefined
+          })
+        )
+        return
+      }
+
       if (req.method === 'POST' && req.url === '/push') {
         let body = ''
         req.on('data', (chunk) => {
@@ -105,6 +133,40 @@ export function createHttpTransport({ config, store, broadcaster }) {
       }
 
       if (serveStatic(req, res, config.dashboardDir)) {
+        return
+      }
+
+      if (req.method === 'GET' && req.url === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MCP Logger</title>
+    <style>
+      body { font-family: sans-serif; margin: 2rem; line-height: 1.5; color: #111; }
+      code { background: #f5f5f5; padding: 0.1rem 0.4rem; border-radius: 4px; }
+      .hint { margin-top: 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>MCP Logger</h1>
+    <p>Server is running.</p>
+    <ul>
+      <li><strong>Health:</strong> <code>/health</code></li>
+      <li><strong>Push logs (POST JSON):</strong> <code>/push</code></li>
+      <li><strong>Server events:</strong> <code>/events</code></li>
+      <li><strong>WebSocket:</strong> <code>/ws</code></li>
+    </ul>
+    <div class="hint">
+      ${
+        config.dashboardDir
+          ? 'Dashboard assets are being served from your configured directory.'
+          : 'Dashboard is not built yet. Run <code>npm run build --prefix packages/dashboard</code> to generate the UI.'
+      }
+    </div>
+  </body>
+</html>`)
         return
       }
 

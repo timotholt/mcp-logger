@@ -1,3 +1,5 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
 
 const DEFAULTS = {
@@ -9,7 +11,14 @@ const DEFAULTS = {
   LOG_DASHBOARD_DIR: ''
 }
 
-dotenv.config()
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const ENV_PATH = path.resolve(__dirname, '../.env')
+const envResult = dotenv.config({ path: ENV_PATH })
+
+export const configMetadata = {
+  envFilePath: ENV_PATH,
+  envFileLoaded: !envResult.error
+}
 
 function parseIntEnv(value, fallback) {
   const numeric = typeof value === 'string' ? parseInt(value, 10) : value
@@ -18,6 +27,10 @@ function parseIntEnv(value, fallback) {
 
 export function loadConfig() {
   const httpPort = parseIntEnv(process.env.LOG_HTTP_PORT, DEFAULTS.LOG_HTTP_PORT)
+  const dashboardDirRaw = process.env.LOG_DASHBOARD_DIR || DEFAULTS.LOG_DASHBOARD_DIR
+  const dashboardDir = dashboardDirRaw
+    ? path.resolve(path.dirname(ENV_PATH), dashboardDirRaw)
+    : ''
 
   return {
     bufferSize: parseIntEnv(process.env.LOG_BUFFER_SIZE, DEFAULTS.LOG_BUFFER_SIZE),
@@ -25,6 +38,9 @@ export function loadConfig() {
     httpHost: process.env.LOG_HTTP_HOST || DEFAULTS.LOG_HTTP_HOST,
     authToken: process.env.LOG_AUTH_TOKEN || DEFAULTS.LOG_AUTH_TOKEN,
     browserTarget: process.env.LOG_BROWSER_TARGET || DEFAULTS.LOG_BROWSER_TARGET,
-    dashboardDir: process.env.LOG_DASHBOARD_DIR || DEFAULTS.LOG_DASHBOARD_DIR
+    dashboardDir,
+    raw: {
+      dashboardDir: dashboardDirRaw
+    }
   }
 }

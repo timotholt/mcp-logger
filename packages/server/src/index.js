@@ -1,6 +1,6 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { loadConfig } from './config.js'
+import { configMetadata, loadConfig } from './config.js'
 import { LogStore } from './store.js'
 import { Broadcaster } from './broadcaster.js'
 import { createStdioTransport } from './transports/stdio.js'
@@ -12,11 +12,27 @@ export async function startServer() {
   const broadcaster = new Broadcaster()
 
   console.log('[mcp-logger] Starting server')
+  console.log(
+    `  env file (${configMetadata.envFileLoaded ? 'loaded' : 'missing'}): ${configMetadata.envFilePath}`
+  )
   console.log(`  buffer size: ${config.bufferSize}`)
   if (config.httpPort) {
     console.log(
       `  http transport: enabled (host=${config.httpHost || '0.0.0.0'} port=${config.httpPort})`
     )
+    const host = config.httpHost === '0.0.0.0' ? 'localhost' : config.httpHost
+    if (config.dashboardDir) {
+      console.log(
+        `  dashboard: http://${host}:${config.httpPort}/ (serve dir: ${config.dashboardDir}$${
+          config.raw?.dashboardDir &&
+          config.raw.dashboardDir !== config.dashboardDir
+            ? `, configured as ${config.raw.dashboardDir}`
+            : ''
+        })`
+      )
+    } else {
+      console.log('  dashboard: disabled (set LOG_DASHBOARD_DIR to serve UI assets)')
+    }
   } else {
     console.log('  http transport: disabled (set LOG_HTTP_PORT to enable dashboard/http APIs)')
   }
