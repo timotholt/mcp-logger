@@ -52,7 +52,8 @@ export function createApp(root) {
   ;[
     { label: 'Health', href: '/health' },
     { label: 'Metadata', href: '/meta' },
-    { label: 'Events (SSE)', href: '/events' }
+    { label: 'Events (SSE)', href: '/events' },
+    { label: 'Demo', href: '/demo' }
   ].forEach(({ label, href }) => {
     const anchor = document.createElement('a')
     anchor.href = href
