@@ -12,6 +12,10 @@ export async function startServer() {
   const broadcaster = new Broadcaster()
   const startedAt = new Date().toISOString()
 
+  store.on('append', (entry) => broadcaster.emit('append', entry))
+  store.on('clear', (session) => broadcaster.emit('clear', session))
+  store.on('session', (session) => broadcaster.emit('session', session))
+
   console.log('[mcp-logger] Starting server')
   console.log(
     `  env file (${configMetadata.envFileLoaded ? 'loaded' : 'missing'}): ${configMetadata.envFilePath}`

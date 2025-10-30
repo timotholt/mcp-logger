@@ -4,13 +4,6 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { WebSocketServer } from 'ws'
 
-function authorize(req, token) {
-  if (!token) return true
-  const header = req.headers['authorization'] || ''
-  const value = Array.isArray(header) ? header[0] : header
-  return value === `Bearer ${token}`
-}
-
 function serveStatic(req, res, dir) {
   if (!dir) return false
   const safeRoot = path.resolve(dir)
@@ -60,12 +53,6 @@ export function createHttpTransport({ config, store, broadcaster, meta = {} }) {
   let server
   let wss
 
-  const demoAuthHeaderLine = config.authToken
-    ? `    xhr.setRequestHeader('Authorization', 'Bearer ${config.authToken
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")}');`
-    : ''
-
   const demoScriptLines = [
     'console.log("DEMO: Script executing...");',
     '(function() {',
@@ -107,7 +94,6 @@ export function createHttpTransport({ config, store, broadcaster, meta = {} }) {
     '    var xhr = new XMLHttpRequest();',
     "    xhr.open('POST', endpoint, true);",
     "    xhr.setRequestHeader('Content-Type', 'application/json');",
-    demoAuthHeaderLine,
     '    xhr.onreadystatechange = function() {',
     '      if (xhr.readyState === 4) {',
     '        console.log("XHR readyState 4, status: " + xhr.status);',
@@ -196,11 +182,6 @@ ${demoScript}
 
   async function start() {
     server = http.createServer((req, res) => {
-      if (!authorize(req, config.authToken)) {
-        res.writeHead(401)
-        res.end()
-        return
-      }
 
       if (req.method === 'GET' && req.url === '/health') {
         const stats = typeof store.stats === 'function' ? store.stats() : null
@@ -349,11 +330,7 @@ ${demoScript}
     }
 
     wss = new WebSocketServer({ server, path: '/ws' })
-    wss.on('connection', (socket, req) => {
-      if (!authorize(req, config.authToken)) {
-        socket.close()
-        return
-      }
+    wss.on('connection', (socket) => {
       clients.add(socket)
       const { entries } = store.read({ cursor: 0, limit: 1000 })
       socket.send(JSON.stringify({ event: 'bootstrap', payload: entries }))

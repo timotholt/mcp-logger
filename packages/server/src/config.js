@@ -11,7 +11,6 @@ const DEFAULTS = {
   LOG_BUFFER_SIZE: 5000,
   LOG_HTTP_PORT: 0,
   LOG_HTTP_HOST: '0.0.0.0',
-  LOG_AUTH_TOKEN: '',
   LOG_BROWSER_TARGET: 'es5',
   LOG_DASHBOARD_DIR: '',
   LOG_BUILD_NUMBER: 0
@@ -47,7 +46,6 @@ export function loadConfig() {
     bufferSize: parsePositiveIntEnv(process.env.LOG_BUFFER_SIZE, DEFAULTS.LOG_BUFFER_SIZE),
     httpPort,
     httpHost: process.env.LOG_HTTP_HOST || DEFAULTS.LOG_HTTP_HOST,
-    authToken: process.env.LOG_AUTH_TOKEN || DEFAULTS.LOG_AUTH_TOKEN,
     browserTarget: process.env.LOG_BROWSER_TARGET || DEFAULTS.LOG_BROWSER_TARGET,
     dashboardDir,
     version: PACKAGE_VERSION,
