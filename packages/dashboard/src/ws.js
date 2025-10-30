@@ -29,7 +29,7 @@ function createEventSource(onEvent, onStatus) {
   }
 }
 
-function createWebSocket(onEvent, onStatus) {
+function createWebSocket(onEvent, onStatus, onTerminate) {
   if (typeof WebSocket !== 'function') {
     return null
   }
@@ -49,6 +49,9 @@ function createWebSocket(onEvent, onStatus) {
   socket.onclose = function () {
     isReady = false
     updateStatus()
+    if (typeof onTerminate === 'function') {
+      onTerminate()
+    }
   }
 
   socket.onerror = function () {
@@ -82,18 +85,72 @@ function createWebSocket(onEvent, onStatus) {
 }
 
 export function startLogStream(onEvent, onStatus) {
-  const wsControl = createWebSocket(onEvent, onStatus)
-  if (wsControl) {
-    return wsControl
-  }
-  const sseControl = createEventSource(onEvent, onStatus)
-  if (sseControl) {
-    return sseControl
-  }
-  return {
+  let activeControl = {
     send() {
       return false
     },
     dispose() {}
+  }
+  let disposed = false
+  let reconnectDelay = 1000
+  let reconnectTimer = null
+
+  function clearReconnect() {
+    if (reconnectTimer) {
+      window.clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+  }
+
+  function scheduleReconnect() {
+    if (disposed || reconnectTimer) {
+      return
+    }
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000)
+      attemptWebSocket()
+    }, reconnectDelay)
+  }
+
+  function handleStatus(status) {
+    if (status && status.transport === 'websocket') {
+      reconnectDelay = status.ready ? 1000 : reconnectDelay
+    }
+    notifyStatus(onStatus, status)
+  }
+
+  function attemptWebSocket() {
+    if (disposed) {
+      return
+    }
+    const control = createWebSocket(onEvent, handleStatus, () => {
+      clearReconnect()
+      scheduleReconnect()
+    })
+    if (control) {
+      activeControl = control
+      return
+    }
+    // WebSocket unsupported; fall back once to SSE
+    const sseControl = createEventSource(onEvent, onStatus)
+    if (sseControl) {
+      activeControl = sseControl
+    }
+  }
+
+  attemptWebSocket()
+
+  return {
+    send(message) {
+      return activeControl.send(message)
+    },
+    dispose() {
+      disposed = true
+      clearReconnect()
+      if (activeControl && typeof activeControl.dispose === 'function') {
+        activeControl.dispose()
+      }
+    }
   }
 }
