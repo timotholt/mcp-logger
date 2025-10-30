@@ -2,6 +2,7 @@
 
 import { patchConsole, restoreConsole } from './consolePatch.js'
 import { createTransportManager } from './transportManager.js'
+export { createMcpLogger, mcpLog } from './demo.js'
 
 var active = null
 

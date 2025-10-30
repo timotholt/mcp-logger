@@ -1,6 +1,12 @@
 const WS_PATH = '/ws'
 
-function createEventSource(onEvent) {
+function notifyStatus(callback, status) {
+  if (typeof callback === 'function') {
+    callback(status)
+  }
+}
+
+function createEventSource(onEvent, onStatus) {
   if (typeof EventSource !== 'function') {
     return null
   }
@@ -12,15 +18,43 @@ function createEventSource(onEvent) {
       // ignore
     }
   }
-  return source
+  notifyStatus(onStatus, { transport: 'sse', ready: true })
+  return {
+    send() {
+      return false
+    },
+    dispose() {
+      source.close()
+    }
+  }
 }
 
-function createWebSocket(onEvent) {
+function createWebSocket(onEvent, onStatus) {
   if (typeof WebSocket !== 'function') {
     return null
   }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const socket = new WebSocket(protocol + '//' + window.location.host + WS_PATH)
+  let isReady = false
+
+  function updateStatus() {
+    notifyStatus(onStatus, { transport: 'websocket', ready: isReady })
+  }
+
+  socket.onopen = function () {
+    isReady = true
+    updateStatus()
+  }
+
+  socket.onclose = function () {
+    isReady = false
+    updateStatus()
+  }
+
+  socket.onerror = function () {
+    socket.close()
+  }
+
   socket.onmessage = function (event) {
     try {
       onEvent(JSON.parse(event.data))
@@ -28,12 +62,38 @@ function createWebSocket(onEvent) {
       // ignore
     }
   }
-  return socket
+
+  return {
+    send(message) {
+      if (!isReady || socket.readyState !== WebSocket.OPEN) {
+        return false
+      }
+      try {
+        socket.send(JSON.stringify(message))
+        return true
+      } catch (err) {
+        return false
+      }
+    },
+    dispose() {
+      socket.close()
+    }
+  }
 }
 
-export function startLogStream(onEvent) {
-  const socket = createWebSocket(onEvent)
-  if (!socket) {
-    createEventSource(onEvent)
+export function startLogStream(onEvent, onStatus) {
+  const wsControl = createWebSocket(onEvent, onStatus)
+  if (wsControl) {
+    return wsControl
+  }
+  const sseControl = createEventSource(onEvent, onStatus)
+  if (sseControl) {
+    return sseControl
+  }
+  return {
+    send() {
+      return false
+    },
+    dispose() {}
   }
 }

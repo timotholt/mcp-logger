@@ -222,9 +222,17 @@ ${demoScript}
         req.on('end', () => {
           try {
             const payload = JSON.parse(body || '{}')
-            const entry = store.append(payload)
+            const entries = Array.isArray(payload)
+              ? store.appendMany(payload)
+              : [store.append(payload)]
             res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ success: true, entry }))
+            res.end(
+              JSON.stringify({
+                success: true,
+                entries,
+                count: entries.length
+              })
+            )
           } catch (err) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ success: false, error: err.message }))
@@ -263,6 +271,33 @@ ${demoScript}
           res.end('Demo page not found')
         }
         return
+      }
+
+      if (req.method === 'GET' && req.url.startsWith('/client/')) {
+        const clientDir = path.resolve(process.cwd(), '../browser-client/dist')
+        const relative = req.url.replace('/client/', '')
+        const target = path.resolve(clientDir, relative)
+        if (!target.startsWith(clientDir)) {
+          res.writeHead(403)
+          res.end()
+          return
+        }
+        try {
+          const stat = fs.statSync(target)
+          if (stat.isFile()) {
+            const ext = path.extname(target).toLowerCase()
+            const contentType =
+              {
+                '.js': 'application/javascript; charset=utf-8',
+                '.map': 'application/json; charset=utf-8'
+              }[ext] || 'application/octet-stream'
+            res.writeHead(200, { 'Content-Type': contentType })
+            fs.createReadStream(target).pipe(res)
+            return
+          }
+        } catch (err) {
+          // fallthrough to 404
+        }
       }
 
       if (serveStatic(req, res, config.dashboardDir)) {

@@ -14,98 +14,76 @@
   </head>
   <body>
     <h1>MCP Logger Browser Demo</h1>
-    <p>This page sends an info log every 3 seconds using old-school JavaScript APIs.</p>
+    <p>This page sends an info log every 3 seconds using the shared MCP browser client.</p>
     <button id="toggle">Stop demo</button>
     <pre id="output">Preparing demo...</pre>
+    <script src="/client/index.js"></script>
     <script type="text/javascript">
-      console.log("DEMO: Script executing...");
-      (function() {
-        console.log("DEMO: Inside IIFE");
-        var endpoint = window.location.origin + '/push';
-        var clientId = 'demo-browser';
-        var sessionId = 'demo-session';
+      (function () {
+        var output = document.getElementById('output');
+        var toggle = document.getElementById('toggle');
+        var newline = '\n';
         var intervalMs = 3000;
         var counter = 0;
         var timer = null;
-        var output = document.getElementById('output');
-        var toggle = document.getElementById('toggle');
-        var newline = String.fromCharCode(10);
-        console.log("DEMO: Script loaded, endpoint: " + endpoint);
-        
-        function zeroPad(value) {
-          return value < 10 ? '0' + value : '' + value;
+
+        function render(message) {
+          output.textContent = message + newline + output.textContent;
         }
-        
-        function timestamp() {
-          var now = new Date();
-          return zeroPad(now.getMonth() + 1) + '/' + zeroPad(now.getDate()) + '/' + now.getFullYear() + ' ' + zeroPad(now.getHours()) + ':' + zeroPad(now.getMinutes()) + ':' + zeroPad(now.getSeconds());
-        }
-        
+
         function randomSixDigits() {
           return ('000000' + Math.floor(Math.random() * 1000000)).slice(-6);
         }
-        
-        function log(message) {
-          output.textContent = message + newline + output.textContent;
+
+        var logFn = (window.createMcpLogger && window.createMcpLogger({ clientId: 'demo-browser', sessionId: 'demo-session' })) || window.mcpLog;
+
+        if (typeof logFn !== 'function') {
+          render('Failed to load MCP browser client.');
+          toggle.disabled = true;
+          return;
         }
-        
+
+        function timestamp() {
+          return new Date().toLocaleString();
+        }
+
         function sendLog() {
           counter += 1;
-          console.log("Sending log #" + counter);
           var message = 'Random message ' + randomSixDigits() + ' sent at ' + timestamp();
-          var payload = JSON.stringify({
-            level: 'info',
-            message: message,
-            clientId: clientId,
-            sessionId: sessionId,
-            timestamp: new Date().toISOString()
-          });
-          
-          var xhr = new XMLHttpRequest();
-          xhr.open('POST', endpoint, true);
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-              console.log("XHR readyState 4, status: " + xhr.status);
-              if (xhr.status >= 200 && xhr.status < 300) {
-                log('#' + counter + ' status ' + xhr.status + ': ' + message);
-              } else {
-                log('#' + counter + ' failed (status ' + xhr.status + ')');
-              }
+          logFn(message).then(
+            function () {
+              render('#' + counter + ' sent: ' + message);
+            },
+            function (err) {
+              render('#' + counter + ' failed: ' + (err && err.message ? err.message : 'unknown error'));
             }
-          };
-          xhr.onerror = function() {
-            console.log('XHR error');
-            log('#' + counter + ' network error');
-          };
-          xhr.send(payload);
+          );
         }
-        
+
         function start() {
-          if (timer) { return; }
-          console.log('Demo starting...');
-          log('Demo started at ' + timestamp() + ' - endpoint: ' + endpoint);
+          if (timer) return;
+          render('Demo started at ' + timestamp());
           sendLog();
           timer = window.setInterval(sendLog, intervalMs);
           toggle.textContent = 'Stop demo';
         }
-        
+
         function stop() {
-          if (!timer) { return; }
+          if (!timer) return;
           window.clearInterval(timer);
           timer = null;
-          log('Demo paused at ' + timestamp());
+          render('Demo paused at ' + timestamp());
           toggle.textContent = 'Start demo';
         }
-        
-        toggle.onclick = function() {
+
+        toggle.addEventListener('click', function () {
           if (timer) {
             stop();
           } else {
             start();
           }
-        };
-        
+        });
+
         start();
       })();
     </script>

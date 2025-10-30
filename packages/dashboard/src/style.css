@@ -10,18 +10,47 @@ body {
   color: #f5f5f5;
 }
 
+.logger-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
 
-.logger-header-row {
+.logger-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 16px 0;
+  padding: 16px;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.logger-header {
+.logger-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.logger-title {
   margin: 0;
   font-size: 1.2rem;
+}
+
+.logger-subtitle {
+  margin: 0;
+  color: #cbd5f5;
+  font-size: 0.9rem;
+}
+
+.logger-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .logger-links {
@@ -39,8 +68,25 @@ body {
   text-decoration: underline;
 }
 
-.logger {
+.logger-clear {
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.logger-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.logger-content {
+  flex: 1;
   padding: 16px;
+  overflow: auto;
 }
 
 .log-table {

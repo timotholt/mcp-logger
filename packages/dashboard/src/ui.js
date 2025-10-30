@@ -32,12 +32,23 @@ export function createApp(root) {
     meta: null
   }
 
-  const container = createElement('div', 'logger')
-  const headerRow = createElement('div', 'logger-header-row')
-  const header = createElement('div', 'logger-header')
-  header.textContent = 'Loading MCP Logger metadata...'
-  headerRow.appendChild(header)
-  const links = createElement('div', 'logger-links')
+  let streamControl = null
+
+  const app = createElement('div', 'logger-app')
+  const headerEl = createElement('header', 'logger-app-header')
+  const headerText = createElement('div', 'logger-header-text')
+  const title = document.createElement('h1')
+  title.className = 'logger-title'
+  title.textContent = 'MCP Logger'
+  const subtitle = document.createElement('p')
+  subtitle.className = 'logger-subtitle'
+  subtitle.textContent = 'Loading metadata…'
+  headerText.appendChild(title)
+  headerText.appendChild(subtitle)
+
+  const headerActions = createElement('div', 'logger-header-actions')
+  const links = document.createElement('nav')
+  links.className = 'logger-links'
   ;[
     { label: 'Health', href: '/health' },
     { label: 'Metadata', href: '/meta' },
@@ -50,10 +61,25 @@ export function createApp(root) {
     anchor.rel = 'noopener noreferrer'
     links.appendChild(anchor)
   })
-  if (links.childElementCount > 0) {
-    headerRow.appendChild(links)
-  }
-  container.appendChild(headerRow)
+  const clearButton = document.createElement('button')
+  clearButton.type = 'button'
+  clearButton.className = 'logger-clear'
+  clearButton.textContent = 'Clear logs'
+  clearButton.disabled = true
+  clearButton.addEventListener('click', () => {
+    if (streamControl && streamControl.send({ type: 'clear' })) {
+      return
+    }
+    state.entries = []
+    render()
+  })
+
+  headerActions.appendChild(links)
+  headerActions.appendChild(clearButton)
+  headerEl.appendChild(headerText)
+  headerEl.appendChild(headerActions)
+
+  const content = createElement('div', 'logger-content')
   const table = createElement('table', 'log-table')
   const thead = createElement('thead')
   const tableHeaderRow = createElement('tr')
@@ -67,12 +93,14 @@ export function createApp(root) {
 
   const tbody = createElement('tbody')
   table.appendChild(tbody)
-  container.appendChild(table)
-  root.appendChild(container)
+  content.appendChild(table)
+  app.appendChild(headerEl)
+  app.appendChild(content)
+  root.appendChild(app)
 
   function renderHeader() {
     if (!state.meta) {
-      header.textContent = 'MCP Logger'
+      subtitle.textContent = 'Metadata unavailable'
       return
     }
     const version = state.meta.version ? `v${state.meta.version}` : 'v?.?'
@@ -80,7 +108,10 @@ export function createApp(root) {
     const started = state.meta.startedAt
       ? new Date(state.meta.startedAt).toLocaleString()
       : 'unknown'
-    header.textContent = `MCP Logger ${version} ${build} — Started ${started}`
+    const parts = [`${version}`]
+    if (build) parts.push(build)
+    parts.push(`started ${started}`)
+    subtitle.textContent = parts.join(' · ')
   }
 
   function render() {
@@ -122,14 +153,19 @@ export function createApp(root) {
     }
   }
 
-  startLogStream(handleEvent)
+  function handleStreamStatus(status) {
+    const supportsClear = status && status.transport === 'websocket' && status.ready
+    clearButton.disabled = !supportsClear
+  }
+
+  streamControl = startLogStream(handleEvent, handleStreamStatus)
 
   fetchMetadata().then((meta) => {
     if (meta) {
       state.meta = meta
       renderHeader()
     } else {
-      header.textContent = 'MCP Logger'
+      subtitle.textContent = 'Metadata unavailable'
     }
   })
 }
