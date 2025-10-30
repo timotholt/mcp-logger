@@ -1,14 +1,17 @@
-You have a checked-in dependency at ./babylon-renderer/mcp-logger. We need the browser logger front end initialised automatically for the demo pages.
+You have a checked-in dependency at ./babylon-renderer/mcp-logger.
 
-Key files:
-- packages/browser-client/src/index.js – package entry, exports attachLogger/detachLogger/setSession and re-exports mcpLog from ./api.js.
-- packages/browser-client/src/api.js – main API surface. Attaches window.mcpLog and exports createMcpLogger plus the simple mcpLog helper.
+Goal: make the Babylon renderer send browser logs with a single call to mcpLog(), no extra setup.
 
-Usage contract:
-1. Build the bundle with `npm run build --prefix babylon-renderer/mcp-logger/packages/browser-client`.
-2. Serve the generated `dist/index.js` to browsers. It registers `window.McpLoggerBrowser` (UMD) and `window.mcpLog`.
-3. In script tags use either `window.mcpLog(message, session?, client?)` or the richer API by `const log = window.McpLoggerBrowser.createMcpLogger({ endpoint, clientId, sessionId })`.
-4. Ensure the server hosting the Babylon renderer proxies POST /push to the MCP logger server. That’s where the browser client ships logs (JSON array).
-5. For local dev, launch the MCP logger server (`npm run dev --prefix babylon-renderer/mcp-logger/packages/server`) so `/push` accepts entries and the dashboard sees them.
+Key facts from the dependency:
+- packages/browser-client/src/api.js defines mcpLog().
+- mcpLog() lazily initializes its fetch transport on first use (ensureTransport) and then posts logs to /push.
+- The UMD build exposes window.mcpLog; ES modules can import { mcpLog } from '@mcp-logger/browser-client'.
 
-Make Windsurf add a module that, on page load, calls [window.McpLoggerBrowser.attachLogger()](cci:1://file:///c:/Users/timot/CascadeProjects/mcp-logger/packages/browser-client/src/index.js:29:0-31:1) with the right endpoint, and exports a helper that your Babylon UI can call to log structured events.
+Tasks for Windsurf:
+1. Build (or reuse) the bundle in packages/browser-client/dist via `npm run build --prefix babylon-renderer/mcp-logger/packages/browser-client`.
+2. When serving the renderer, include dist/index.js so window.mcpLog is available.
+3. In the Babylon codebase, use window.mcpLog('message', 'sessionId', 'clientId') as the single logging surface. Let mcpLog handle initialization; no other helpers should be used.
+4. Ensure the host app forwards POST /push to the logger server (runs from babylon-renderer/mcp-logger/packages/server).
+5. Optional: provide a thin wrapper (if needed) that just calls window.mcpLog so future callers stay consistent.
+
+Remember: no alternative logging functions—just mcpLog().
