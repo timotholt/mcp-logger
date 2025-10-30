@@ -25,7 +25,8 @@ local debugging.
    bridge, ring-buffer storage, and tool APIs (`push_log`, `fetch_logs`,
    `clear_logs`, `set_session`).
 2. **Web Dashboard** – Vite-powered SPA served by the server for live log
-   monitoring, filtering, and session control.
+   monitoring, filtering, session control, and quick links to health/meta/events
+   endpoints plus the in-browser demo.
 3. **Client Adapters** – Browser and Node helpers that wrap `console.log`, send
    structured payloads to the server, and retain native console output.
 4. **Session & Client Tagging** – Each log includes `clientId` and `sessionId`
@@ -112,10 +113,12 @@ local debugging.
 ## Client Adapters
 
 - **Browser** (`@mcp-logger/browser`)
-  - `attachLogger({ endpoint, clientId, sessionId?, levels?, enabled? })`.
-  - Sends entries via Fetch batching; upgrades to WebSocket when available.
-  - Falls back to XHR polling when neither Fetch nor WebSocket is present (ES5
-    compatibility for IE11-era browsers).
+  - `attachLogger({ endpoint, clientId, sessionId?, levels?, enabled? })` – full
+    console hook for application integration.
+  - Lightweight helper `mcpLog(message, session?, client?)` for quick scripts or
+    demos. Defaults to `'.'` for session/client; passing new values updates the
+    stored identifiers before sending. Uses Fetch batching and falls back to XHR
+    (ES5-compatible build).
   - Built output transpiled to ES5 (no optional chaining, arrow functions, etc.)
     so it can run in legacy engines.
   - Respects runtime feature flags so logging can be toggled without reload.
@@ -128,11 +131,29 @@ local debugging.
 ## Web Dashboard
 
 - Served at the server root with static assets built by Vite.
+- Sticky header surfaces metadata plus quick links to `/health`, `/meta`,
+  `/events`, and `/demo`, alongside a "Clear logs" button.
 - Connects via SSE/WebSocket for live updates.
 - UI features: level toggles, client/session filters, text search, timeline
   graph, clear/session buttons, JSON export, theme toggle.
 - Uses MCP tool endpoints under the hood for destructive actions (clear, start
   session).
+
+### Browser Demo
+
+Visit `/demo` to see the `mcpLog` helper in action. The page imports the
+browser bundle, throws immediately if it fails to load, and sends an `info`
+message every three seconds:
+
+```html
+<script src="/client/index.js"></script>
+<script>
+  mcpLog('Random message', 'demo-session', 'demo-browser')
+</script>
+```
+
+Providing `session`/`client` arguments updates the stored identifiers; omit them
+to keep previous values (defaults to `'.'`).
 
 ## Configuration
 
