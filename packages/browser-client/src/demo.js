@@ -54,20 +54,36 @@ export function createMcpLogger(options = {}) {
   }
 }
 
-let defaultLogger = null
+let transport = null
+let currentSession = '.'
+let currentClient = '.'
 
-function ensureDefaultLogger() {
-  if (!defaultLogger) {
-    defaultLogger = createMcpLogger({})
+function ensureTransport() {
+  if (!transport) {
+    transport = createFetchTransport({ endpoint: window.location.origin + '/push' })
   }
-  return defaultLogger
+  return transport
 }
 
-export function mcpLog(message, overrides) {
-  return ensureDefaultLogger()(message, overrides)
+export function mcpLog(message, session = '.', client = '.') {
+  if (session && session !== '.') {
+    currentSession = session
+  }
+  if (client && client !== '.') {
+    currentClient = client
+  }
+
+  const entry = {
+    level: 'info',
+    message,
+    clientId: currentClient,
+    sessionId: currentSession,
+    timestamp: new Date().toISOString()
+  }
+
+  ensureTransport().sendBatch([entry])
 }
 
 if (typeof window !== 'undefined') {
   window.mcpLog = mcpLog
-  window.createMcpLogger = createMcpLogger
 }

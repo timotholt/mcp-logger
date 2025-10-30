@@ -67,6 +67,10 @@ export function createTransportManager(options) {
     return fetchTransport.sendBatch(batch)
   }
 
+  function setClient(id) {
+    clientId = id
+  }
+
   function setSession(id) {
     sessionId = id
   }
@@ -81,6 +85,7 @@ export function createTransportManager(options) {
   return {
     send: send,
     setSession: setSession,
+    setClient: setClient,
     dispose: dispose
   }
 }

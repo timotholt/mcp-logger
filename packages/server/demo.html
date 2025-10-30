@@ -19,6 +19,7 @@
     <pre id="output">Preparing demo...</pre>
     <script src="/client/index.js"></script>
     <script type="text/javascript">
+      var mcpLog = window.mcpLog;
       (function () {
         var output = document.getElementById('output');
         var toggle = document.getElementById('toggle');
@@ -35,13 +36,9 @@
           return ('000000' + Math.floor(Math.random() * 1000000)).slice(-6);
         }
 
-        var logFn = (window.createMcpLogger && window.createMcpLogger({ clientId: 'demo-browser', sessionId: 'demo-session' })) || window.mcpLog;
-
-        if (typeof logFn !== 'function') {
-          render('Failed to load MCP browser client.');
-          toggle.disabled = true;
-          return;
-        }
+        // if (typeof mcpLog !== 'function') {
+        //   throw new Error('MCP browser client failed to load')
+        // }
 
         function timestamp() {
           return new Date().toLocaleString();
@@ -50,14 +47,8 @@
         function sendLog() {
           counter += 1;
           var message = 'Random message ' + randomSixDigits() + ' sent at ' + timestamp();
-          logFn(message).then(
-            function () {
-              render('#' + counter + ' sent: ' + message);
-            },
-            function (err) {
-              render('#' + counter + ' failed: ' + (err && err.message ? err.message : 'unknown error'));
-            }
-          );
+          mcpLog(message, 'demo-session', 'demo-browser');
+          render('#' + counter + ' sent: ' + message);
         }
 
         function start() {
