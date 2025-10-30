@@ -1,6 +1,7 @@
 import http from 'http'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import { WebSocketServer } from 'ws'
 
 function authorize(req, token) {
@@ -58,6 +59,125 @@ export function createHttpTransport({ config, store, broadcaster, meta = {} }) {
   const clients = new Set()
   let server
   let wss
+
+  const demoAuthHeaderLine = config.authToken
+    ? `    xhr.setRequestHeader('Authorization', 'Bearer ${config.authToken
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")}');`
+    : ''
+
+  const demoScriptLines = [
+    'console.log("DEMO: Script executing...");',
+    '(function() {',
+    '  console.log("DEMO: Inside IIFE");',
+    "  var endpoint = window.location.origin + '/push';",
+    "  var clientId = 'demo-browser';",
+    "  var sessionId = 'demo-session';",
+    '  var intervalMs = 3000;',
+    '  var counter = 0;',
+    '  var timer = null;',
+    "  var output = document.getElementById('output');",
+    "  var toggle = document.getElementById('toggle');",
+    '  var newline = String.fromCharCode(10);',
+    '  console.log("DEMO: Script loaded, endpoint: " + endpoint);',
+    '  function zeroPad(value) {',
+    "    return value < 10 ? '0' + value : '' + value;",
+    '  }',
+    '  function timestamp() {',
+    '    var now = new Date();',
+    "    return zeroPad(now.getMonth() + 1) + '/' + zeroPad(now.getDate()) + '/' + now.getFullYear() + ' ' + zeroPad(now.getHours()) + ':' + zeroPad(now.getMinutes()) + ':' + zeroPad(now.getSeconds());",
+    '  }',
+    '  function randomSixDigits() {',
+    "    return ('000000' + Math.floor(Math.random() * 1000000)).slice(-6);",
+    '  }',
+    '  function log(message) {',
+    '    output.textContent = message + newline + output.textContent;',
+    '  }',
+    '  function sendLog() {',
+    '    counter += 1;',
+    '    console.log("Sending log #" + counter);',
+    "    var message = 'Random message ' + randomSixDigits() + ' sent at ' + timestamp();",
+    '    var payload = JSON.stringify({',
+    "      level: 'info',",
+    '      message: message,',
+    '      clientId: clientId,',
+    '      sessionId: sessionId,',
+    "      timestamp: new Date().toISOString()",
+    '    });',
+    '    var xhr = new XMLHttpRequest();',
+    "    xhr.open('POST', endpoint, true);",
+    "    xhr.setRequestHeader('Content-Type', 'application/json');",
+    demoAuthHeaderLine,
+    '    xhr.onreadystatechange = function() {',
+    '      if (xhr.readyState === 4) {',
+    '        console.log("XHR readyState 4, status: " + xhr.status);',
+    '        if (xhr.status >= 200 && xhr.status < 300) {',
+    "          log('#' + counter + ' status ' + xhr.status + ': ' + message);",
+    '        } else {',
+    "          log('#' + counter + ' failed (status ' + xhr.status + ')');",
+    '        }',
+    '      }',
+    '    };',
+    '    xhr.onerror = function() {',
+    "      console.log('XHR error');",
+    "      log('#' + counter + ' network error');",
+    '    };',
+    '    xhr.send(payload);',
+    '  }',
+    '  function start() {',
+    '    if (timer) { return; }',
+    "    console.log('Demo starting...');",
+    "    log('Demo started at ' + timestamp() + ' - endpoint: ' + endpoint);",
+    '    sendLog();',
+    '    timer = window.setInterval(sendLog, intervalMs);',
+    "    toggle.textContent = 'Stop demo';",
+    '  }',
+    '  function stop() {',
+    '    if (!timer) { return; }',
+    '    window.clearInterval(timer);',
+    '    timer = null;',
+    "    log('Demo paused at ' + timestamp());",
+    "    toggle.textContent = 'Start demo';",
+    '  }',
+    '  toggle.onclick = function() {',
+    '    if (timer) {',
+    '      stop();',
+    '    } else {',
+    '      start();',
+    '    }',
+    '  };',
+    '  start();',
+    '})();'
+  ]
+  
+  const demoScript = demoScriptLines.filter(line => line !== '').join('\n')
+
+  const demoPageHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MCP Logger Demo</title>
+    <style>
+      body { font-family: sans-serif; background: #101620; color: #f5f5f5; margin: 0; padding: 24px; }
+      h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+      p { margin-top: 0; }
+      button { background: #3b82f6; border: none; color: #fff; padding: 8px 14px; font-size: 0.95rem; cursor: pointer; border-radius: 4px; }
+      button:disabled { opacity: 0.6; cursor: default; }
+      pre { background: rgba(0,0,0,0.4); padding: 12px; border-radius: 6px; max-height: 300px; overflow-y: auto; font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <h1>MCP Logger Browser Demo</h1>
+    <p>This page sends an info log every 3 seconds using old-school JavaScript APIs.</p>
+    <button id="toggle">Stop demo</button>
+    <pre id="output">Preparing demo...</pre>
+    <script type="text/javascript">
+${demoScript}
+    </script>
+  </body>
+</html>`
+
+  const demoPageResponse = demoPageHtml.replace('</script>', '<\\/script>')
 
   function broadcast(event, payload) {
     const message = JSON.stringify({ event, payload })
@@ -148,6 +268,19 @@ export function createHttpTransport({ config, store, broadcaster, meta = {} }) {
           res.write(`data: ${JSON.stringify(entry)}\n\n`)
         })
         req.on('close', unsubscribe)
+        return
+      }
+
+      if (req.method === 'GET' && req.url === '/demo') {
+        const demoPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../demo.html')
+        try {
+          const demoHtml = fs.readFileSync(demoPath, 'utf-8')
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+          res.end(demoHtml)
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' })
+          res.end('Demo page not found')
+        }
         return
       }
 
